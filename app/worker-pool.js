@@ -7,16 +7,18 @@ class WorkerPool {
     this.activeTasks = new Map();
     this.readyWorkers = new Set();
     this.isInitializing = false;
+    this.onInitProgress = null; // Global progress callback for initialization
 
     console.log(`WorkerPool initialized with ${this.maxWorkers} workers`);
   }
 
-  async initialize() {
+  async initialize(onInitProgress = null) {
     if (this.isInitializing) {
       return;
     }
 
     this.isInitializing = true;
+    this.onInitProgress = onInitProgress;
     console.log('Initializing worker pool...');
 
     // Create workers
@@ -80,11 +82,15 @@ class WorkerPool {
 
       default:
         // Forward progress and other messages
+        // If no active task, this is likely initialization progress
         if (taskId && this.activeTasks.has(taskId)) {
           const task = this.activeTasks.get(taskId);
           if (task.onProgress) {
             task.onProgress(data);
           }
+        } else if (this.onInitProgress && (data.status === 'progress' || data.status === 'initiate')) {
+          // Forward initialization progress to global callback
+          this.onInitProgress(data);
         }
         break;
     }

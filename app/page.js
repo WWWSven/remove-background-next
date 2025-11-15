@@ -24,14 +24,18 @@ export default function Home() {
   const [showModelReady, setShowModelReady] = useState(false);
   const [workerPoolStats, setWorkerPoolStats] = useState(null);
   const [backgroundColor, setBackgroundColor] = useState('#ffffff');
+  const [initProgress, setInitProgress] = useState(null); // Model initialization progress
 
   // Create a ref to store the latest processImage function
   const processImageRef = useRef(null);
 
   // We use the `useEffect` hook to set up the worker pool as soon as the `App` component is mounted.
   useEffect(() => {
-    // Initialize worker pool
-    workerPool.initialize();
+    // Initialize worker pool with progress callback
+    workerPool.initialize((progressData) => {
+      // Handle initialization progress
+      setInitProgress(progressData);
+    });
 
     // Monitor worker pool status
     const checkWorkerPoolStatus = () => {
@@ -42,6 +46,8 @@ export default function Home() {
       if (stats.readyWorkers > 0 && !ready) {
         setReady(true);
         setShowModelReady(true);
+        // Clear init progress when ready
+        setInitProgress(null);
       } else if (stats.readyWorkers === 0 && ready) {
         setReady(false);
       }
@@ -232,6 +238,48 @@ export default function Home() {
 
   return (
     <main className="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-6">
+      {/* Model Download Progress Banner */}
+      {initProgress && !ready && (
+        <div className="max-w-7xl mx-auto mb-6">
+          <Card className="border-primary/50 shadow-lg">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-4">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <CardTitle className="text-base">
+                      {initProgress.message || 'Downloading AI Model...'}
+                    </CardTitle>
+                    {initProgress.progress !== undefined && (
+                      <span className="text-sm text-muted-foreground">
+                        {Math.round(initProgress.progress)}%
+                      </span>
+                    )}
+                  </div>
+                  {initProgress.progress !== undefined && (
+                    <Progress 
+                      value={Math.round(initProgress.progress)} 
+                      className="h-2"
+                    />
+                  )}
+                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                    {initProgress.file && (
+                      <span className="truncate flex-1">
+                        File: {initProgress.file}
+                      </span>
+                    )}
+                    {initProgress.loaded && initProgress.total && (
+                      <span>
+                        {formatBytes(initProgress.loaded)} / {formatBytes(initProgress.total)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto h-[calc(100vh-3rem)]">
         {/* Left Sidebar - Upload Section */}
